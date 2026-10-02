@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.tasktracker.app-mergeDebugResources-60:/values-v23/values-v23.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Aaushi\\.gradle\\caches\\9.3.0\\transforms\\c01d5fa5a0a867af70a44d001e47b12c\\workspace\\transformed\\work-runtime-2.9.1\\res\\values-v23\\values-v23.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,121",
+                        "endColumns": "65,62",
+                        "endOffsets": "116,179"
+                    }
+                }
+            ]
+        }
+    ]
+}

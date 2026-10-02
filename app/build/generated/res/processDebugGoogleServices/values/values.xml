@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gcm_defaultSenderId" translatable="false">331376012194</string>
+    <string name="google_api_key" translatable="false">AIzaSyChMy8e4YEjNjz_TqO06ye30DnYbX7y_bc</string>
+    <string name="google_app_id" translatable="false">1:331376012194:android:6a1baac178ebf41c2820fb</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyChMy8e4YEjNjz_TqO06ye30DnYbX7y_bc</string>
+    <string name="google_storage_bucket" translatable="false">task-tracker-d885a.firebasestorage.app</string>
+    <string name="project_id" translatable="false">task-tracker-d885a</string>
+</resources>
