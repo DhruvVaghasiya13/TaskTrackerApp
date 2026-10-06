@@ -12,6 +12,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.tasktracker.R
+import com.example.tasktracker.data.local.AppDatabase
 import com.example.tasktracker.data.local.TaskEntity
 import com.example.tasktracker.domain.occursOn
 import com.example.tasktracker.ui.MainActivity
@@ -49,37 +50,67 @@ object ReminderScheduler {
         return if (h != null && h in 0..23 && m in 0..59) LocalTime.of(h, m) else LocalTime.of(5, 0)
     }
 
-    /** Next reminder moment strictly after [after], or null if none. */
-    fun nextTrigger(
+    /**
+     * Next reminder moment strictly after [after], or null if none.
+     *
+     * Every occurrence day has a base moment (task time or default time). When [repeatMinutes] > 0
+     * the same day also has repeat moments: base + 1x, 2x, 3x ... interval (until midnight).
+     * A repeat moment only counts while the task is still NOT completed ([isPending]).
+     */
+    suspend fun nextTrigger(
         task: TaskEntity,
         after: LocalDateTime = LocalDateTime.now(),
-        defaultTime: String = NotificationSettings.DEFAULT_TIME
+        defaultTime: String = NotificationSettings.DEFAULT_TIME,
+        repeatMinutes: Int = 0,
+        isPending: suspend (LocalDate) -> Boolean = { true }
     ): LocalDateTime? {
         // blank task time = "use the default time from Notification settings"
         val time = parseTime(task.reminderTime.ifBlank { defaultTime })
         val dueDate = runCatching { LocalDate.parse(task.due) }.getOrNull() ?: return null
         val isRepeating = task.repeatType == "daily" || task.repeatType == "weekly" || task.repeatType == "monthly"
-        if (!isRepeating) {
-            val dt = LocalDateTime.of(dueDate, time)
-            return if (dt.isAfter(after)) dt else null
+
+        /** First moment on [day] after [after]: the base moment, or (if still pending) a repeat moment. */
+        suspend fun slotOn(day: LocalDate): LocalDateTime? {
+            val base = LocalDateTime.of(day, time)
+            if (base.isAfter(after)) return base
+            if (repeatMinutes <= 0) return null
+            if (!isPending(day)) return null
+            val step = repeatMinutes * 60L
+            val passed = java.time.Duration.between(base, after).seconds
+            val next = base.plusSeconds((passed / step + 1) * step)
+            return if (next.toLocalDate() == day) next else null   // repeats stop at midnight
         }
+
+        if (!isRepeating) return slotOn(dueDate)
         val start = after.toLocalDate()
         for (i in 0..400) {
             val day = start.plusDays(i.toLong())
             if (task.occursOn(day)) {
-                val dt = LocalDateTime.of(day, time)
-                if (dt.isAfter(after)) return dt
+                slotOn(day)?.let { return it }
             }
         }
         return null
     }
 
-    private fun pendingIntent(context: Context, taskId: String, dateKey: String, create: Boolean): PendingIntent? {
+    /** Task's own repeat interval if it has one (>= 0), otherwise the Profile default. */
+    fun effectiveRepeatMinutes(task: TaskEntity, profileDefault: Int): Int =
+        if (task.reminderRepeatMinutes >= 0) task.reminderRepeatMinutes else profileDefault
+
+    /** Task is "pending" on [day] = not completed and not deselected for that day. */
+    private suspend fun pendingOn(db: AppDatabase, task: TaskEntity, day: LocalDate): Boolean {
+        val key = "${task.id}_$day"
+        val done = db.completionDao().get(key)?.done == true
+        val selected = db.selectionDao().get(key)?.selected
+        return !done && selected != false
+    }
+
+    private fun pendingIntent(context: Context, taskId: String, dateKey: String, create: Boolean, atMillis: Long = 0L): PendingIntent? {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             action = ACTION
             data = Uri.parse("tasktracker://reminder/${Uri.encode(taskId)}")
             putExtra("taskId", taskId)
             putExtra("date", dateKey)
+            putExtra("at", atMillis)
         }
         val flags = PendingIntent.FLAG_IMMUTABLE or
             (if (create) PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_NO_CREATE)
@@ -91,15 +122,20 @@ object ReminderScheduler {
         pendingIntent(context, taskId, "", create = false)?.let { am.cancel(it); it.cancel() }
     }
 
-    /** Schedules (or cancels) the next reminder of one task. */
-    fun schedule(context: Context, task: TaskEntity, after: LocalDateTime = LocalDateTime.now()) {
+    /** Schedules (or cancels) the next reminder of one task (base time, or the next repeat while not completed). */
+    suspend fun schedule(context: Context, task: TaskEntity, after: LocalDateTime = LocalDateTime.now()) {
         if (task.deleted || !task.reminder || !NotificationSettings.isEnabled(context)) { cancel(context, task.id); return }
-        val next = nextTrigger(task, after, NotificationSettings.defaultTime(context))
+        val db = AppDatabase.get(context)
+        val next = nextTrigger(
+            task, after,
+            NotificationSettings.defaultTime(context),
+            effectiveRepeatMinutes(task, NotificationSettings.repeatIntervalMinutes(context))
+        ) { day -> pendingOn(db, task, day) }
         if (next == null) { cancel(context, task.id); return }
 
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val pi = pendingIntent(context, task.id, next.toLocalDate().toString(), create = true) ?: return
         val millis = next.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val pi = pendingIntent(context, task.id, next.toLocalDate().toString(), create = true, atMillis = millis) ?: return
         val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
         try {
             if (canExact) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pi)
@@ -110,7 +146,7 @@ object ReminderScheduler {
     }
 
     /** Re-plans every reminder from the current task list (and drops alarms of deleted / changed tasks). */
-    fun sync(context: Context, activeTasks: List<TaskEntity>) {
+    suspend fun sync(context: Context, activeTasks: List<TaskEntity>) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val old = prefs.getStringSet(KEY_IDS, emptySet()) ?: emptySet()
         val eligible = if (!NotificationSettings.isEnabled(context)) emptyList()
@@ -119,6 +155,27 @@ object ReminderScheduler {
         (old - newIds).forEach { cancel(context, it) }
         eligible.forEach { schedule(context, it) }
         prefs.edit().putStringSet(KEY_IDS, newIds).apply()
+    }
+
+    /**
+     * A completed task must stop bothering: remove its notification from the tray
+     * (and the common summary when no task notification is left).
+     */
+    fun dismissCompleted(context: Context, doneTaskDateKeys: Collection<Pair<String, String>>) {
+        if (doneTaskDateKeys.isEmpty()) return
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val shown = runCatching { nm.activeNotifications.toList() }.getOrDefault(emptyList())
+        if (shown.isEmpty()) return
+        var cancelledAny = false
+        doneTaskDateKeys.forEach { (taskId, dateKey) ->
+            val id = (taskId + dateKey).hashCode()
+            if (shown.any { it.id == id }) { nm.cancel(id); cancelledAny = true }
+        }
+        if (cancelledAny) {
+            val left = runCatching { nm.activeNotifications.toList() }.getOrDefault(emptyList())
+                .count { it.id != SUMMARY_ID && it.notification.group == GROUP_KEY }
+            if (left == 0) nm.cancel(SUMMARY_ID)
+        }
     }
 
     private fun ensureChannel(context: Context) {
@@ -214,9 +271,10 @@ object ReminderScheduler {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val active = runCatching { nm.activeNotifications.toList() }.getOrDefault(emptyList())
 
-        // A summary left over from an earlier day/time is replaced, so the new batch alerts again.
+        // A summary left over from an earlier batch / earlier repeat is replaced, so the new one alerts again.
+        // (20 s: tasks that fire in the same minute still make just ONE sound, but a repeat reminder always alerts.)
         val oldSummary = active.firstOrNull { it.id == SUMMARY_ID }
-        if (oldSummary != null && System.currentTimeMillis() - oldSummary.postTime > 2 * 60 * 1000L) {
+        if (oldSummary != null && System.currentTimeMillis() - oldSummary.postTime > 20 * 1000L) {
             nmc.cancel(SUMMARY_ID)
         }
 

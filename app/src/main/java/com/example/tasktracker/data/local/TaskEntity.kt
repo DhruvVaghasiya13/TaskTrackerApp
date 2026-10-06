@@ -25,6 +25,8 @@ data class TaskEntity(
     val customRulesJson: String = "[]",      // [{type, value, time}]
     val reminder: Boolean = false,
     val reminderTime: String = "",
+    /** Repeat-notification interval in minutes: -1 = follow the Profile default, 0 = no repeat for this task, >0 = custom interval. */
+    val reminderRepeatMinutes: Int = -1,
     val purpose: String = "",
     val notes: String = "",
     val createdAt: Long,

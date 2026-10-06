@@ -140,6 +140,11 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
                 (remote["notifEnabled"] as? Boolean)?.let { NotificationSettings.setEnabled(getApplication<Application>(), it) }
                 (remote["notifDefaultTime"] as? String)?.takeIf { it.isNotBlank() }
                     ?.let { NotificationSettings.setDefaultTime(getApplication<Application>(), it) }
+                val remoteRepeatH = (remote["notifRepeatHours"] as? Number)?.toInt()
+                val remoteRepeatM = (remote["notifRepeatMinutes"] as? Number)?.toInt()
+                if (remoteRepeatH != null || remoteRepeatM != null) {
+                    NotificationSettings.setRepeat(getApplication<Application>(), remoteRepeatH ?: 0, remoteRepeatM ?: 0)
+                }
                 prefs.edit()
                     .putString("profile_name", name).putString("profile_name_$uid", name)
                     .putString("profile_contact", contact).putString("profile_contact_$uid", contact)
@@ -152,7 +157,8 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
             val hasLocalData = profileName.value.isNotBlank() || profileContact.value.isNotBlank() ||
                 themeMode.value != ThemeMode.SYSTEM || CategoryStore.hasData() ||
                 !NotificationSettings.isEnabled(getApplication<Application>()) ||
-                NotificationSettings.defaultTime(getApplication<Application>()) != NotificationSettings.DEFAULT_TIME
+                NotificationSettings.defaultTime(getApplication<Application>()) != NotificationSettings.DEFAULT_TIME ||
+                NotificationSettings.repeatIntervalMinutes(getApplication<Application>()) > 0
             val needsUpload = (remote == null && hasLocalData) ||
                 prefs.getBoolean("settings_dirty_$uid", false)
             if (needsUpload) {
@@ -165,6 +171,8 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
                         "customCategories" to CategoryStore.toJson(),
                         "notifEnabled" to NotificationSettings.isEnabled(getApplication<Application>()),
                         "notifDefaultTime" to NotificationSettings.defaultTime(getApplication<Application>()),
+                        "notifRepeatHours" to NotificationSettings.repeatHours(getApplication<Application>()),
+                        "notifRepeatMinutes" to NotificationSettings.repeatMinutes(getApplication<Application>()),
                         "updatedAt" to stamp
                     )
                 )
@@ -516,6 +524,14 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
         NotificationSettings.setDefaultTime(getApplication<Application>(), hhmm)
         markSettingsChanged()
         if (applyToAll) viewModelScope.launch { repo.useDefaultReminderTimeForAll() }
+    }
+
+    /** Repeat interval for not-yet-completed tasks. 0 h 0 min = repeat OFF. */
+    /** [applyToAll] = also reset tasks that had their own repeat interval, so every task follows [hours]:[minutes]. */
+    fun setRepeatInterval(hours: Int, minutes: Int, applyToAll: Boolean = false) {
+        NotificationSettings.setRepeat(getApplication<Application>(), hours, minutes)
+        markSettingsChanged()
+        if (applyToAll) viewModelScope.launch { repo.useDefaultRepeatForAll() }
     }
 
     fun openDaySheet(date: LocalDate) {

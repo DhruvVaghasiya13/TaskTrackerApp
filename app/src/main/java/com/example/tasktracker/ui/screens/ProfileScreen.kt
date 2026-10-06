@@ -74,6 +74,9 @@ fun ProfileScreen(
     onSyncNow: () -> Unit = {},
     notificationsEnabled: Boolean = true,
     defaultReminderTime: String = "05:00",
+    repeatHours: Int = 0,
+    repeatMinutes: Int = 0,
+    onSetRepeatInterval: (hours: Int, minutes: Int, applyToAll: Boolean) -> Unit = { _, _, _ -> },
     onSetNotificationsEnabled: (Boolean) -> Unit = {},
     onSetDefaultReminderTime: (hhmm: String, applyToAll: Boolean) -> Unit = { _, _ -> }
 ) {
@@ -525,8 +528,11 @@ fun ProfileScreen(
                     NotificationSettingsCard(
                         enabled = notificationsEnabled,
                         defaultTime = defaultReminderTime,
+                        repeatHours = repeatHours,
+                        repeatMinutes = repeatMinutes,
                         onSetEnabled = onSetNotificationsEnabled,
-                        onSetTime = onSetDefaultReminderTime
+                        onSetTime = onSetDefaultReminderTime,
+                        onSetRepeat = onSetRepeatInterval
                     )
 
                     Spacer(Modifier.height(28.dp))
@@ -815,13 +821,19 @@ private fun textFieldColors() = OutlinedTextFieldDefaults.colors(
 private fun NotificationSettingsCard(
     enabled: Boolean,
     defaultTime: String,
+    repeatHours: Int,
+    repeatMinutes: Int,
     onSetEnabled: (Boolean) -> Unit,
-    onSetTime: (String, Boolean) -> Unit
+    onSetTime: (String, Boolean) -> Unit,
+    onSetRepeat: (Int, Int, Boolean) -> Unit
 ) {
     val colors = MaterialTheme.extraColors
     val context = LocalContext.current
     var showPicker by remember { mutableStateOf(false) }
     var pendingTime by remember { mutableStateOf<String?>(null) }
+    var showRepeatDialog by remember { mutableStateOf(false) }
+    var pendingRepeat by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    val repeatOn = repeatHours > 0 || repeatMinutes > 0
 
     Column(
         modifier = Modifier
@@ -856,7 +868,7 @@ private fun NotificationSettingsCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text("Notification time", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (enabled) colors.ink else colors.muted)
                 Text(
-                    text = "Default 5:00 AM. All tasks notify at this time unless a task has its own time.",
+                    text = "New tasks use this time by default (you can change it per task).",
                     fontSize = 12.sp, color = colors.muted
                 )
             }
@@ -865,6 +877,32 @@ private fun NotificationSettingsCard(
                 text = com.example.tasktracker.reminder.NotificationSettings.display(defaultTime),
                 fontSize = 15.sp, fontWeight = FontWeight.Bold,
                 color = if (enabled) colors.accent else colors.muted
+            )
+        }
+
+        HorizontalDivider(color = colors.line)
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled) { showRepeatDialog = true }
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Repeat notification", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (enabled) colors.ink else colors.muted)
+                Text(
+                    text = if (repeatOn)
+                        "Until the task is completed, you are notified again every ${com.example.tasktracker.reminder.NotificationSettings.repeatDisplay(repeatHours, repeatMinutes)}."
+                    else
+                        "Off - set hours / minutes to keep getting notified until the task is completed.",
+                    fontSize = 12.sp, color = colors.muted
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = if (repeatOn) "Every " + com.example.tasktracker.reminder.NotificationSettings.repeatDisplay(repeatHours, repeatMinutes) else "Off",
+                fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                color = if (enabled && repeatOn) colors.accent else colors.muted
             )
         }
 
@@ -886,6 +924,59 @@ private fun NotificationSettingsCard(
         }
     }
 
+    if (showRepeatDialog) {
+        var hText by remember { mutableStateOf(repeatHours.toString()) }
+        var mText by remember { mutableStateOf(repeatMinutes.toString()) }
+        val h = hText.toIntOrNull()?.coerceIn(0, 23) ?: 0
+        val m = mText.toIntOrNull()?.coerceIn(0, 59) ?: 0
+        AlertDialog(
+            onDismissRequest = { showRepeatDialog = false },
+            title = { Text("Repeat notification") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "If a task is not completed, notify me again after every:",
+                        fontSize = 13.sp, color = colors.muted
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = hText,
+                            onValueChange = { v -> hText = v.filter { it.isDigit() }.take(2) },
+                            label = { Text("Hours") },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = mText,
+                            onValueChange = { v -> mText = v.filter { it.isDigit() }.take(2) },
+                            label = { Text("Minutes") },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Text(
+                        text = if (h == 0 && m == 0) "0 hours 0 minutes = repeat OFF"
+                        else "Repeats every ${com.example.tasktracker.reminder.NotificationSettings.repeatDisplay(h, m)} after the notification time, until the task is completed (stops at midnight).",
+                        fontSize = 12.sp, color = colors.muted
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { pendingRepeat = h to m; showRepeatDialog = false }) { Text("Save") }
+            },
+            dismissButton = {
+                Row {
+                    if (repeatOn) {
+                        TextButton(onClick = { pendingRepeat = 0 to 0; showRepeatDialog = false }) { Text("Turn off", color = colors.high) }
+                    }
+                    TextButton(onClick = { showRepeatDialog = false }) { Text("Cancel") }
+                }
+            }
+        )
+    }
+
     if (showPicker) {
         val parts = defaultTime.split(":")
         val timeState = rememberTimePickerState(
@@ -903,6 +994,20 @@ private fun NotificationSettingsCard(
             },
             dismissButton = { TextButton(onClick = { showPicker = false }) { Text("Cancel") } },
             text = { TimePicker(state = timeState) }
+        )
+    }
+
+    pendingRepeat?.let { (h, m) ->
+        AlertDialog(
+            onDismissRequest = { pendingRepeat = null },
+            title = { Text("Repeat notification: " + com.example.tasktracker.reminder.NotificationSettings.repeatDisplay(h, m)) },
+            text = { Text("Also change the repeat of tasks that have their own custom repeat?") },
+            confirmButton = {
+                TextButton(onClick = { onSetRepeat(h, m, true); pendingRepeat = null }) { Text("Yes, all tasks") }
+            },
+            dismissButton = {
+                TextButton(onClick = { onSetRepeat(h, m, false); pendingRepeat = null }) { Text("No, keep their repeat") }
+            }
         )
     }
 

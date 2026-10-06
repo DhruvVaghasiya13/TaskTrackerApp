@@ -40,6 +40,17 @@ class TaskRepository(
         }
     }
 
+    /** Every task goes back to "use the default repeat interval from Profile" (-1). */
+    suspend fun useDefaultRepeatForAll() {
+        val now = System.currentTimeMillis()
+        val changed = tasks.activeList().filter { it.reminderRepeatMinutes != -1 }
+            .map { it.copy(reminderRepeatMinutes = -1, updatedAt = now, dirty = true) }
+        if (changed.isNotEmpty()) {
+            tasks.upsertAll(changed)
+            trySyncQuietly()
+        }
+    }
+
     /** Live tasks + deleted / replaced ones (still needed to show past days correctly). */
     fun observeHistoryTasks() = tasks.observeHistory()
     fun observeCompletions() = completions.observeDone()

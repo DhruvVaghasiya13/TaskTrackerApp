@@ -59,6 +59,10 @@ fun TaskEditSheet(
     val defaultTime = notifState.defaultTime
     var reminderTime by remember { mutableStateOf(task?.reminderTime.orEmpty()) }
     val effectiveTime = reminderTime.ifBlank { defaultTime }
+    // Repeat notification: -1 = follow the Profile default, 0 = no repeat for this task, >0 = custom interval (minutes)
+    var repeatMin by remember { mutableStateOf(task?.reminderRepeatMinutes ?: -1) }
+    val effectiveRepeat = if (repeatMin >= 0) repeatMin else notifState.repeatIntervalMinutes
+    var showRepeatPicker by remember { mutableStateOf(false) }
     var purpose by remember { mutableStateOf(task?.purpose ?: "") }
     var notes by remember { mutableStateOf(task?.notes ?: "") }
 
@@ -354,6 +358,34 @@ fun TaskEditSheet(
                 )
             }
 
+            // Repeat notification (default = Profile setting)
+            Column {
+                FieldLabel("REPEAT NOTIFICATION")
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = if (effectiveRepeat > 0)
+                            "Every " + com.example.tasktracker.reminder.NotificationSettings.repeatDisplay(effectiveRepeat / 60, effectiveRepeat % 60)
+                        else "Off",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { Text("Change", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.accent, modifier = Modifier.padding(end = 12.dp)) },
+                        colors = textFieldColors(),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Box(modifier = Modifier.matchParentSize().clickable { showRepeatPicker = true })
+                }
+                Text(
+                    text = if (repeatMin < 0)
+                        "Default from Profile settings - tap to use a different repeat for this task. Until the task is completed it is notified again after every interval (stops at midnight)."
+                    else
+                        "Custom repeat for this task. Until the task is completed it is notified again after every interval (stops at midnight).",
+                    fontSize = 12.sp,
+                    color = colors.muted,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
             // Purpose
             Column {
                 FieldLabel("PURPOSE")
@@ -414,6 +446,7 @@ fun TaskEditSheet(
                         customRulesJson = "[]",
                         reminder = true,
                         reminderTime = reminderTime, // "" = default time from Notification settings
+                        reminderRepeatMinutes = repeatMin, // -1 = default repeat from Profile settings
                         purpose = purpose.trim(),
                         notes = notes.trim(),
                         createdAt = task?.createdAt ?: now,
@@ -468,6 +501,62 @@ fun TaskEditSheet(
                 TextButton(onClick = cancelTime) { Text("Cancel") }
             },
             text = { TimePicker(state = timeState) }
+        )
+    }
+
+    if (showRepeatPicker) {
+        val startMin = effectiveRepeat.coerceAtLeast(0)
+        var hText by remember { mutableStateOf((startMin / 60).toString()) }
+        var mText by remember { mutableStateOf((startMin % 60).toString()) }
+        val h = hText.toIntOrNull()?.coerceIn(0, 23) ?: 0
+        val m = mText.toIntOrNull()?.coerceIn(0, 59) ?: 0
+        AlertDialog(
+            onDismissRequest = { showRepeatPicker = false },
+            title = { Text("Repeat notification") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("If this task is not completed, notify me again after every:", fontSize = 13.sp, color = colors.muted)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = hText,
+                            onValueChange = { v -> hText = v.filter { it.isDigit() }.take(2) },
+                            label = { Text("Hours") },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = mText,
+                            onValueChange = { v -> mText = v.filter { it.isDigit() }.take(2) },
+                            label = { Text("Minutes") },
+                            singleLine = true,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Text(
+                        text = if (h == 0 && m == 0) "0 hours 0 minutes = no repeat for this task"
+                        else "Repeats every " + com.example.tasktracker.reminder.NotificationSettings.repeatDisplay(h, m) + " after the notification time.",
+                        fontSize = 12.sp, color = colors.muted
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val total = h * 60 + m
+                    // same as the Profile default -> keep following the default
+                    repeatMin = if (total == notifState.repeatIntervalMinutes) -1 else total
+                    showRepeatPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                Row {
+                    if (repeatMin >= 0) {
+                        TextButton(onClick = { repeatMin = -1; showRepeatPicker = false }) { Text("Use default") }
+                    }
+                    TextButton(onClick = { showRepeatPicker = false }) { Text("Cancel") }
+                }
+            }
         )
     }
 

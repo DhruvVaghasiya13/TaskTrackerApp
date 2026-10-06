@@ -11,7 +11,7 @@ fun TaskEntity.toMap(): Map<String, Any> = mapOf(
     "weeklyMode" to weeklyMode, "weeklyDays" to weeklyDays,
     "monthlyMode" to monthlyMode, "monthlyDates" to monthlyDates,
     "customRules" to customRulesJson, "reminder" to reminder,
-    "reminderTime" to reminderTime, "purpose" to purpose, "notes" to notes,
+    "reminderTime" to reminderTime, "reminderRepeatMinutes" to reminderRepeatMinutes, "purpose" to purpose, "notes" to notes,
     "createdAt" to createdAt, "updatedAt" to updatedAt, "deleted" to deleted,
     "endDate" to endDate
 )
@@ -34,6 +34,7 @@ fun DocumentSnapshot.toTask(id: String) = TaskEntity(
     customRulesJson = getString("customRules") ?: "[]",
     reminder = getBoolean("reminder") ?: false,
     reminderTime = getString("reminderTime") ?: "",
+    reminderRepeatMinutes = getLong("reminderRepeatMinutes")?.toInt() ?: -1,
     purpose = getString("purpose") ?: "",
     notes = getString("notes") ?: "",
     createdAt = getLong("createdAt") ?: 0L,

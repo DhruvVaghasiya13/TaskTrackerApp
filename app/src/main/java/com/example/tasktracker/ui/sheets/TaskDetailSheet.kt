@@ -49,9 +49,13 @@ fun TaskDetailSheet(
     val timeText = if (task.reminderTime.isBlank())
         NotificationSettings.display(notif.defaultTime) + " (default)"
     else NotificationSettings.display(task.reminderTime)
+    val repeatMin = if (task.reminderRepeatMinutes >= 0) task.reminderRepeatMinutes else notif.repeatIntervalMinutes
+    val repeatSuffix = if (task.reminderRepeatMinutes >= 0) "" else " (default)"
     val notifText = when {
         !task.reminder -> "Off"
         !notif.enabled -> "Turned off in Notification settings"
+        repeatMin > 0 ->
+            "On - at $timeText, repeats every " + NotificationSettings.repeatDisplay(repeatMin / 60, repeatMin % 60) + repeatSuffix + " until completed"
         else -> "On - at $timeText"
     }
     val dayText = runCatching {

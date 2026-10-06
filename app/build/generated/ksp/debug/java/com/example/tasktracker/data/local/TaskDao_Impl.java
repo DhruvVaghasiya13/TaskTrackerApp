@@ -47,7 +47,7 @@ public final class TaskDao_Impl implements TaskDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `tasks` (`id`,`name`,`category`,`subcategory`,`priority`,`due`,`repeatType`,`weeklyMode`,`weeklyDays`,`monthlyMode`,`monthlyDates`,`customRulesJson`,`reminder`,`reminderTime`,`purpose`,`notes`,`createdAt`,`updatedAt`,`deleted`,`endDate`,`dirty`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `tasks` (`id`,`name`,`category`,`subcategory`,`priority`,`due`,`repeatType`,`weeklyMode`,`weeklyDays`,`monthlyMode`,`monthlyDates`,`customRulesJson`,`reminder`,`reminderTime`,`reminderRepeatMinutes`,`purpose`,`notes`,`createdAt`,`updatedAt`,`deleted`,`endDate`,`dirty`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -70,15 +70,16 @@ public final class TaskDao_Impl implements TaskDao {
         final int _tmp_2 = entity.getReminder() ? 1 : 0;
         statement.bindLong(13, _tmp_2);
         statement.bindString(14, entity.getReminderTime());
-        statement.bindString(15, entity.getPurpose());
-        statement.bindString(16, entity.getNotes());
-        statement.bindLong(17, entity.getCreatedAt());
-        statement.bindLong(18, entity.getUpdatedAt());
+        statement.bindLong(15, entity.getReminderRepeatMinutes());
+        statement.bindString(16, entity.getPurpose());
+        statement.bindString(17, entity.getNotes());
+        statement.bindLong(18, entity.getCreatedAt());
+        statement.bindLong(19, entity.getUpdatedAt());
         final int _tmp_3 = entity.getDeleted() ? 1 : 0;
-        statement.bindLong(19, _tmp_3);
-        statement.bindString(20, entity.getEndDate());
+        statement.bindLong(20, _tmp_3);
+        statement.bindString(21, entity.getEndDate());
         final int _tmp_4 = entity.getDirty() ? 1 : 0;
-        statement.bindLong(21, _tmp_4);
+        statement.bindLong(22, _tmp_4);
       }
     };
     this.__preparedStmtOfMarkSynced = new SharedSQLiteStatement(__db) {
@@ -211,6 +212,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfCustomRulesJson = CursorUtil.getColumnIndexOrThrow(_cursor, "customRulesJson");
           final int _cursorIndexOfReminder = CursorUtil.getColumnIndexOrThrow(_cursor, "reminder");
           final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfReminderRepeatMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderRepeatMinutes");
           final int _cursorIndexOfPurpose = CursorUtil.getColumnIndexOrThrow(_cursor, "purpose");
           final int _cursorIndexOfNotes = CursorUtil.getColumnIndexOrThrow(_cursor, "notes");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
@@ -255,6 +257,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpReminder = _tmp_2 != 0;
             final String _tmpReminderTime;
             _tmpReminderTime = _cursor.getString(_cursorIndexOfReminderTime);
+            final int _tmpReminderRepeatMinutes;
+            _tmpReminderRepeatMinutes = _cursor.getInt(_cursorIndexOfReminderRepeatMinutes);
             final String _tmpPurpose;
             _tmpPurpose = _cursor.getString(_cursorIndexOfPurpose);
             final String _tmpNotes;
@@ -273,7 +277,7 @@ public final class TaskDao_Impl implements TaskDao {
             final int _tmp_4;
             _tmp_4 = _cursor.getInt(_cursorIndexOfDirty);
             _tmpDirty = _tmp_4 != 0;
-            _item = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
+            _item = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpReminderRepeatMinutes,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
             _result.add(_item);
           }
           return _result;
@@ -313,6 +317,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfCustomRulesJson = CursorUtil.getColumnIndexOrThrow(_cursor, "customRulesJson");
           final int _cursorIndexOfReminder = CursorUtil.getColumnIndexOrThrow(_cursor, "reminder");
           final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfReminderRepeatMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderRepeatMinutes");
           final int _cursorIndexOfPurpose = CursorUtil.getColumnIndexOrThrow(_cursor, "purpose");
           final int _cursorIndexOfNotes = CursorUtil.getColumnIndexOrThrow(_cursor, "notes");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
@@ -357,6 +362,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpReminder = _tmp_2 != 0;
             final String _tmpReminderTime;
             _tmpReminderTime = _cursor.getString(_cursorIndexOfReminderTime);
+            final int _tmpReminderRepeatMinutes;
+            _tmpReminderRepeatMinutes = _cursor.getInt(_cursorIndexOfReminderRepeatMinutes);
             final String _tmpPurpose;
             _tmpPurpose = _cursor.getString(_cursorIndexOfPurpose);
             final String _tmpNotes;
@@ -375,7 +382,7 @@ public final class TaskDao_Impl implements TaskDao {
             final int _tmp_4;
             _tmp_4 = _cursor.getInt(_cursorIndexOfDirty);
             _tmpDirty = _tmp_4 != 0;
-            _item = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
+            _item = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpReminderRepeatMinutes,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
             _result.add(_item);
           }
           return _result;
@@ -416,6 +423,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfCustomRulesJson = CursorUtil.getColumnIndexOrThrow(_cursor, "customRulesJson");
           final int _cursorIndexOfReminder = CursorUtil.getColumnIndexOrThrow(_cursor, "reminder");
           final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfReminderRepeatMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderRepeatMinutes");
           final int _cursorIndexOfPurpose = CursorUtil.getColumnIndexOrThrow(_cursor, "purpose");
           final int _cursorIndexOfNotes = CursorUtil.getColumnIndexOrThrow(_cursor, "notes");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
@@ -460,6 +468,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpReminder = _tmp_2 != 0;
             final String _tmpReminderTime;
             _tmpReminderTime = _cursor.getString(_cursorIndexOfReminderTime);
+            final int _tmpReminderRepeatMinutes;
+            _tmpReminderRepeatMinutes = _cursor.getInt(_cursorIndexOfReminderRepeatMinutes);
             final String _tmpPurpose;
             _tmpPurpose = _cursor.getString(_cursorIndexOfPurpose);
             final String _tmpNotes;
@@ -478,7 +488,7 @@ public final class TaskDao_Impl implements TaskDao {
             final int _tmp_4;
             _tmp_4 = _cursor.getInt(_cursorIndexOfDirty);
             _tmpDirty = _tmp_4 != 0;
-            _item = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
+            _item = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpReminderRepeatMinutes,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
             _result.add(_item);
           }
           return _result;
@@ -517,6 +527,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfCustomRulesJson = CursorUtil.getColumnIndexOrThrow(_cursor, "customRulesJson");
           final int _cursorIndexOfReminder = CursorUtil.getColumnIndexOrThrow(_cursor, "reminder");
           final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfReminderRepeatMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderRepeatMinutes");
           final int _cursorIndexOfPurpose = CursorUtil.getColumnIndexOrThrow(_cursor, "purpose");
           final int _cursorIndexOfNotes = CursorUtil.getColumnIndexOrThrow(_cursor, "notes");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
@@ -560,6 +571,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpReminder = _tmp_2 != 0;
             final String _tmpReminderTime;
             _tmpReminderTime = _cursor.getString(_cursorIndexOfReminderTime);
+            final int _tmpReminderRepeatMinutes;
+            _tmpReminderRepeatMinutes = _cursor.getInt(_cursorIndexOfReminderRepeatMinutes);
             final String _tmpPurpose;
             _tmpPurpose = _cursor.getString(_cursorIndexOfPurpose);
             final String _tmpNotes;
@@ -578,7 +591,7 @@ public final class TaskDao_Impl implements TaskDao {
             final int _tmp_4;
             _tmp_4 = _cursor.getInt(_cursorIndexOfDirty);
             _tmpDirty = _tmp_4 != 0;
-            _result = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
+            _result = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpReminderRepeatMinutes,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
           } else {
             _result = null;
           }
@@ -616,6 +629,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfCustomRulesJson = CursorUtil.getColumnIndexOrThrow(_cursor, "customRulesJson");
           final int _cursorIndexOfReminder = CursorUtil.getColumnIndexOrThrow(_cursor, "reminder");
           final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfReminderRepeatMinutes = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderRepeatMinutes");
           final int _cursorIndexOfPurpose = CursorUtil.getColumnIndexOrThrow(_cursor, "purpose");
           final int _cursorIndexOfNotes = CursorUtil.getColumnIndexOrThrow(_cursor, "notes");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
@@ -660,6 +674,8 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpReminder = _tmp_2 != 0;
             final String _tmpReminderTime;
             _tmpReminderTime = _cursor.getString(_cursorIndexOfReminderTime);
+            final int _tmpReminderRepeatMinutes;
+            _tmpReminderRepeatMinutes = _cursor.getInt(_cursorIndexOfReminderRepeatMinutes);
             final String _tmpPurpose;
             _tmpPurpose = _cursor.getString(_cursorIndexOfPurpose);
             final String _tmpNotes;
@@ -678,7 +694,7 @@ public final class TaskDao_Impl implements TaskDao {
             final int _tmp_4;
             _tmp_4 = _cursor.getInt(_cursorIndexOfDirty);
             _tmpDirty = _tmp_4 != 0;
-            _item = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
+            _item = new TaskEntity(_tmpId,_tmpName,_tmpCategory,_tmpSubcategory,_tmpPriority,_tmpDue,_tmpRepeatType,_tmpWeeklyMode,_tmpWeeklyDays,_tmpMonthlyMode,_tmpMonthlyDates,_tmpCustomRulesJson,_tmpReminder,_tmpReminderTime,_tmpReminderRepeatMinutes,_tmpPurpose,_tmpNotes,_tmpCreatedAt,_tmpUpdatedAt,_tmpDeleted,_tmpEndDate,_tmpDirty);
             _result.add(_item);
           }
           return _result;

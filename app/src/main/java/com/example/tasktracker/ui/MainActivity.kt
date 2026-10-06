@@ -292,6 +292,9 @@ fun MainAppScreen(vm: TaskViewModel) {
                     syncStatus = syncStatus,
                     notificationsEnabled = notifSettings.enabled,
                     defaultReminderTime = notifSettings.defaultTime,
+                    repeatHours = notifSettings.repeatHours,
+                    repeatMinutes = notifSettings.repeatMinutes,
+                    onSetRepeatInterval = { h, m, all -> vm.setRepeatInterval(h, m, all) },
                     onSetNotificationsEnabled = { vm.setNotificationsEnabled(it) },
                     onSetDefaultReminderTime = { t, all -> vm.setDefaultReminderTime(t, all) }
                 )

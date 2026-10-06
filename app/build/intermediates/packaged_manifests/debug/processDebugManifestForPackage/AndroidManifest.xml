@@ -33,7 +33,6 @@
         android:icon="@mipmap/ic_launcher"
         android:label="Task Tracker"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:testOnly="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar" >
         <activity
             android:name="com.example.tasktracker.ui.MainActivity"

@@ -33,10 +33,24 @@ class TaskTrackerApp : Application() {
             onSyncFailed = { SyncWorker.syncWhenOnline(this) }
         )
         SyncWorker.schedule(this)
-        // Re-plan notifications whenever tasks or the notification settings (on/off, default time) change (new / edited / deleted / synced from another device).
+        // Re-plan notifications whenever tasks, completions (a completed task stops its repeats) or the notification
+        // settings (on/off, default time, repeat interval) change (new / edited / deleted / synced from another device).
         appScope.launch {
-            combine(repository.observeTasks(), NotificationSettings.state) { tasks, _ -> tasks }.collect { tasks ->
+            combine(
+                repository.observeTasks(),
+                repository.observeCompletions(),
+                repository.observeSelections(),
+                NotificationSettings.state
+            ) { tasks, done, _, _ -> tasks to done }.collect { (tasks, done) ->
                 runCatching { ReminderScheduler.sync(this@TaskTrackerApp, tasks) }
+                // task completed -> its notification disappears from the tray
+                val today = java.time.LocalDate.now().toString()
+                runCatching {
+                    ReminderScheduler.dismissCompleted(
+                        this@TaskTrackerApp,
+                        done.filter { it.date == today }.map { it.taskId to it.date }
+                    )
+                }
             }
         }
     }
